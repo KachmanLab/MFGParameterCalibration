@@ -16,7 +16,7 @@ We recommend using `uv` to configure your virtual environment, but using `pip` o
 
 ```shell
 # Clone the repository
-git clone https://github.com/Racemuis/MFGParameterCalibration
+git clone https://github.com/KachmanLab/MFGParameterCalibration
 # Install uv if you haven't already
 curl -LsSf https://astral.sh/uv/install.sh | sh  
 
