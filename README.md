@@ -24,7 +24,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 # wget -qO- https://astral.sh/uv/install.sh | sh
 # pip install uv
 
-# Create environment and install ECHO
+# Create environment and install the repository
 cd MFGParameterCalibration
 uv venv --python 3.11
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
