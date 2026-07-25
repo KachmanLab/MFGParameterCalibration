@@ -12,6 +12,12 @@ import matplotlib.dates as mdates
 logger = logging.getLogger(__name__)
 
 
+plt.rc('axes', labelsize=14)
+plt.rc('legend', fontsize=12)
+plt.rc('xtick', labelsize=12)
+plt.rc('ytick', labelsize=12)
+
+
 def plot_trajectories(
     ts: np.ndarray,
     ys_obs: np.ndarray,
@@ -157,7 +163,7 @@ def plot_mean_field_trajectories(
     t_grid: jnp.ndarray,
     states: list,
     plot_separate: bool = False,
-    figsize: Tuple[int, int] = (15, 4),
+    figsize: Tuple[int, int] = (4, 3),
 ):
     """
     Plot the mean field predictions.
@@ -174,48 +180,46 @@ def plot_mean_field_trajectories(
         None.
     """
 
-    fig, ax = plt.subplots(1, 3, figsize=figsize)
     for i in range(3):
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
         for s in range(d):
             if "metadata" in results[0].keys():
                 x_axis = results[0]["metadata"][i][2]
             else:
                 x_axis = t_grid
 
-            index = s if plot_separate else i
-            ax[index].plot(
+            ax.plot(
                 x_axis,
                 results[0]["mu_true"][i, :, s],
                 color=f"C{s}",
                 alpha=0.5,
                 linestyle="--",
                 linewidth=3.0,
-                label=f"$\mu({states[s]})$" if i == 0 else "",
+                label=f"$\mu_t({states[s]})$",
             )
-            ax[index].plot(
+            ax.plot(
                 x_axis,
                 results[0]["mu_pred"][i, :, s],
                 color=f"C{s}",
                 linewidth=1.5,
-                label=rf"$\mu_t^\theta({states[s]})$" if i == 0 else "",
+                label=rf"$\mu_t^\theta({states[s]})$",
             )
-        ax[i].set_title(f"Mean field evolution {i + 1}")
-        ax[i].set_ylabel(rf"$\mu_t(S_{i})$")
+            ax.set_ylabel(rf"$\mu$")
 
-        if "metadata" in results[0].keys():
-            ax[i].xaxis.set_major_locator(mdates.YearLocator())
-            ax[i].xaxis.set_major_formatter(mdates.DateFormatter("%b\n(%Y)"))
-            ax[i].xaxis.set_minor_locator(mdates.MonthLocator())
-            ax[i].xaxis.set_minor_formatter(mdates.DateFormatter("%b"))
+            if "metadata" in results[0].keys():
+                ax.xaxis.set_major_locator(mdates.YearLocator())
+                ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n(%Y)"))
+                ax.xaxis.set_minor_locator(mdates.MonthLocator())
+                ax.xaxis.set_minor_formatter(mdates.DateFormatter("%b"))
 
-        ax[i].set_xlabel("$t$")
-        ax[i].grid(which="major", linestyle="--", linewidth=0.5, alpha=0.5)
-        ax[i].grid(which="minor", linestyle=":", linewidth=0.3, alpha=0.3)
-    ax[0].legend()
-    plt.tight_layout()
+            ax.set_xlabel("$t$")
+            ax.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.5)
+            ax.grid(which="minor", linestyle=":", linewidth=0.3, alpha=0.3)
+        ax.legend()
+        plt.tight_layout()
 
-    plt.savefig(os.path.join(output_dir, "mu_evolution.pdf"), bbox_inches="tight")
-    plt.close()
+        plt.savefig(os.path.join(output_dir, f"mu_evolution_sample_{i}.pdf"), bbox_inches="tight")
+        plt.close()
 
 
 def plot_avg_mean_field_trajectory(
@@ -246,36 +250,37 @@ def plot_avg_mean_field_trajectory(
     mean_pred = np.mean(mu_pred, axis=0)
     se_pred = np.std(mu_pred, axis=0) / len(results)
 
-    fig, ax = plt.subplots(1, 1, figsize=figsize)
-    for s in range(d):
-        ax.plot(
-            t_grid,
-            results[0]["mu_true"][0, :, s],
-            color=f"C{s}",
-            alpha=0.5,
-            linestyle="--",
-            linewidth=3.0,
-            label=rf"$\mu_t({states[s]})$",
-        )
-        ax.plot(t_grid, mean_pred[0, :, s], color=f"C{s}", linewidth=1.5, label=rf"$\mu_t^\theta({states[s]})$")
-        ax.fill_between(
-            t_grid,
-            mean_pred[0, :, s] - se_pred[0, :, s],
-            mean_pred[0, :, s] + se_pred[0, :, s],
-            alpha=0.2,
-            color=f"C{s}",
-        )
-    ax.set_ylabel(rf"$\mu_t$")
-    ax.set_xlabel(r"$t$")
+    for sample in [0, 1]:
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        for s in range(d):
+            ax.plot(
+                t_grid,
+                results[0]["mu_true"][sample, :, s],
+                color=f"C{s}",
+                alpha=0.5,
+                linestyle="--",
+                linewidth=3.0,
+                label=rf"$\mu_t({states[s]})$",
+            )
+            ax.plot(t_grid, mean_pred[sample, :, s], color=f"C{s}", linewidth=1.5, label=rf"$\mu_t^\theta({states[s]})$")
+            ax.fill_between(
+                t_grid,
+                mean_pred[sample, :, s] - se_pred[sample, :, s],
+                mean_pred[sample, :, s] + se_pred[sample, :, s],
+                alpha=0.2,
+                color=f"C{s}",
+            )
+        ax.set_ylabel(rf"$\mu_t$")
+        ax.set_xlabel(r"$t$")
 
-    plt.tight_layout()
-    plt.savefig(os.path.join(output_dir, f"mu_evolution_no_legend.pdf"), bbox_inches="tight")
+        plt.tight_layout()
+        plt.savefig(os.path.join(output_dir, f"sample_{sample}_mu_evolution_no_legend.pdf"), bbox_inches="tight")
 
-    ax.legend()
-    plt.tight_layout()
+        ax.legend()
+        plt.tight_layout()
 
-    plt.savefig(os.path.join(output_dir, "mu_evolution.pdf"), bbox_inches="tight")
-    plt.close()
+        plt.savefig(os.path.join(output_dir, f"sample_{sample}_mu_evolution.pdf"), bbox_inches="tight")
+        plt.close()
 
 
 def plot_mean_field_sir_trajectories(

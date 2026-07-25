@@ -6,6 +6,10 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
+plt.rc('axes', labelsize=14)
+plt.rc('legend', fontsize=8)
+plt.rc('xtick', labelsize=12)
+plt.rc('ytick', labelsize=12)
 
 def plot_losses(
     train_loss: list[float],
@@ -92,6 +96,7 @@ def plot_mean_field_loss(
     plt.xlabel("Epoch")
     plt.ylabel(r"$L_2$ Loss")
     plt.legend()
+    plt.setp(plt.gca().get_legend().get_texts(), fontsize='9')
     plt.grid(which="major", linestyle="--", linewidth=0.5, alpha=0.5)
     plt.grid(which="minor", linestyle=":", linewidth=0.3, alpha=0.3)
     plt.tight_layout()

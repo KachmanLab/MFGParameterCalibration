@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+plt.rc('axes', labelsize=14)
+plt.rc('legend', fontsize=12)
+plt.rc('xtick', labelsize=12)
+plt.rc('ytick', labelsize=12)
+
 
 def plot_gamma_evolution_1d(t_grid: np.ndarray, g_hist: np.ndarray, g_true: np.ndarray, path: str):
     fig, ax = plt.subplots(
