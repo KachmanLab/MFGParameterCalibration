@@ -42,3 +42,21 @@ class TrainingConfig:
     @property
     def delta_steps(self) -> int:
         return int(self.N * self.delta_ratio)
+
+
+@dataclass
+class DiffEqConfig(TrainingConfig):
+    """
+    Centralised hyperparameter container shared by the neural ODE based MFG training experiments.
+
+    Inherits from the TrainingConfig
+
+    Every field maps 1-to-1 to a module-level constant that previously lived
+    in each experiment script.  Experiment-specific defaults are set in the
+    subclass or at construction time.
+    """
+    in_size: int = 3
+    out_size: int = 3
+    predict_g: bool = False  # Toggle universal differential equation (Rackauckas et al., 2021).
+    width_size: int = 64
+    depth: int = 3           # Number of hidden layers including the output layer
