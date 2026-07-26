@@ -53,13 +53,22 @@ class BaseTrainer:
     ----------
     cfg:
         A :class:`TrainingConfig` instance carrying all hyperparameters.
+    dynamic:
+        A boolean indicating whether the Picard solver should compute \gamma dynamically.
+        Set to `False` for using a precomputed gamma. Default `False`. Dynamic computation
+        is currently incompatible with mean field control.
     """
 
-    def __init__(self, cfg: TrainingConfig) -> None:
+    def __init__(self, cfg: TrainingConfig, dynamic: bool = False) -> None:
         self.cfg = cfg
+        self.dynamic = dynamic
 
         # Derived time grid (reused for all experiments)
-        self.t_grid: jnp.ndarray = jnp.linspace(0, cfg.T, cfg.N)
+        self.t_grid = self.cfg.t_grid
+
+        if self.dynamic and self.cfg.is_mfc:
+            raise NotImplementedError("Dynamic solving is currently incompatible with mean field control. Set 'dynamic'"
+                                      "to false for the Trainer when solving MFC problems.")
 
     def generate_data(
         self,
@@ -209,8 +218,6 @@ class BaseTrainer:
         t_grid = self.t_grid
 
         def loss_fn(params, mu_o, mu0_o, s_idx):
-            g_p = self._pred_g_traj(model, params, t_grid, mu_o)
-
             dg_dmu_p = None
             if cfg.is_mfc:
                 dg_dmu_p = jax.vmap(
@@ -220,7 +227,13 @@ class BaseTrainer:
                     )
                 )(t_grid, mu_o)
 
-            mu_p = solver_fn(g_p, dg_dmu_p, jnp.repeat(mu0_o[None, :], cfg.N, axis=0), mu0_o)
+            if self.dynamic:
+
+                mu_p = solver_fn(params, jnp.repeat(mu0_o[None, :], cfg.N, axis=0), mu0_o)
+                g_p = self._pred_g_traj(model, params, t_grid, mu_p)
+            else:
+                g_p = self._pred_g_traj(model, params, t_grid, mu_o)
+                mu_p = solver_fn(g_p, dg_dmu_p, jnp.repeat(mu0_o[None, :], cfg.N, axis=0), mu0_o)
 
             sl = lambda x: jax.lax.dynamic_slice(x, (s_idx, 0), (cfg.delta_steps, d))
             residual = jnp.mean(jnp.sum((sl(mu_p) - sl(mu_o)) ** 2, axis=1))
@@ -251,7 +264,10 @@ class BaseTrainer:
                     )
                 )(t_grid, mo)
 
-            mp = solver_fn(gp, dgp, jnp.repeat(m0[None, :], cfg.N, axis=0), m0)
+            if self.dynamic:
+                mp = solver_fn(params, jnp.repeat(m0[None, :], cfg.N, axis=0), m0)
+            else:
+                mp = solver_fn(gp, dgp, jnp.repeat(m0[None, :], cfg.N, axis=0), m0)
             return jnp.mean(jnp.sum((mp - mo) ** 2, axis=1)), mp, gp
 
         return full_eval
@@ -406,9 +422,9 @@ class BaseTrainer:
 
         log_path = os.path.join(cdir, "training.log")
         with open(log_path, "w") as f:
-            f.write(f"--- Experiment {case.upper()} Starting (Noise: {noise_level}, d: {d}, MFC: {cfg.is_mfc}) ---\n")
+            f.write(f"--- Experiment {case.upper()} Starting (Noise: {noise_level}, d: {d}, MFC: {cfg.is_mfc}) | Dynamic: {self.dynamic} ---\n")
 
-        print(f"\n--- {case.upper()} | Noise: {noise_str} | Dim: {d} | MFC: {cfg.is_mfc} ---")
+        print(f"\n--- {case.upper()} | Noise: {noise_str} | Dim: {d} | MFC: {cfg.is_mfc} | Dynamic: {self.dynamic} ---")
 
         mfg_model, solver_fn = self._build_mfg(d)
 

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import jax.numpy as jnp
 
 @dataclass
 class TrainingConfig:
@@ -42,6 +43,10 @@ class TrainingConfig:
     @property
     def delta_steps(self) -> int:
         return int(self.N * self.delta_ratio)
+
+    @property
+    def t_grid(self) -> jnp.ndarray:
+        return jnp.linspace(0, self.T, self.N)
 
 
 @dataclass

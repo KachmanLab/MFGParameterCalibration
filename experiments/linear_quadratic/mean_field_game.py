@@ -18,6 +18,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
+from core.DynamicPicardSolver import DynamicPicardSolver
 from src.core.PicardSolver import PicardSolver
 from src.mean_field_games.LinearQuadratic import LinearQuadratic
 from src.plots.gamma_evolution import plot_gamma_evolution_1d
@@ -31,13 +32,14 @@ TEST_CASES = ["constant", "time_dependent", "mf_dependent"]
 
 terminal_cost_scale = 5.0
 CONSTANT_GAMMA = False
+IS_DYNAMIC = True
 TIME_DEPENDENT_TYPE = "arc"  # 'arc' or 'bell'
 IS_MFC = False
 
 b_min = 0.1
 b_max = 3.0
 
-DIMENSIONS = [3, 4, 8, 16, 32]
+DIMENSIONS = [3, 4]  # [3, 4, 8, 16, 32]
 NOISE_LEVELS = [0.0]
 
 ROOT_DIR = "results"
@@ -48,8 +50,8 @@ cfg = TrainingConfig(
     constant_gamma=CONSTANT_GAMMA,
     is_mfc=IS_MFC,
     gamma_size=1,
-    num_seeds=5,
-    epochs=500,
+    num_seeds=3, # 5,
+    epochs=250, # 500,
     T=2.0,
     N=100,
     num_samples=200,
@@ -91,14 +93,18 @@ _TRUE_FNS = {
 
 
 class LinearQuadraticTrainer(BaseTrainer):
-    def __init__(self, case: str) -> None:
-        super().__init__(cfg)
+    def __init__(self, case: str, dynamic: bool) -> None:
+        super().__init__(cfg, dynamic=dynamic)
         self.case = case
         self.true_fn = _TRUE_FNS[case]
 
     def _build_mfg(self, d: int) -> Tuple:
         mfg = LinearQuadratic(terminal_cost_scale=terminal_cost_scale)
-        picard = PicardSolver(mfg=mfg, dt=self.cfg.dt)
+        if self.dynamic:
+            model = self._make_model()
+            picard = DynamicPicardSolver(mfg=mfg, dt=self.cfg.dt, t_grid=self.cfg.t_grid, model=model)
+        else:
+            picard = PicardSolver(mfg=mfg, dt=self.cfg.dt)
         return mfg, picard.get_solver_fn()
 
     def generate_data(
@@ -184,7 +190,7 @@ if __name__ == "__main__":
     os.makedirs(base_dir, exist_ok=True)
 
     for tc in TEST_CASES:
-        trainer = LinearQuadraticTrainer(case=tc)
+        trainer = LinearQuadraticTrainer(case=tc, dynamic=IS_DYNAMIC)
         for noise in NOISE_LEVELS:
             for d in DIMENSIONS:
                 trainer.run_experiment(tc, noise, d, base_dir)
